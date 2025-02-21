@@ -1,124 +1,182 @@
 <?php
+require_once('Petshop.php'); // Pastikan class Petshop dimuat dulu
+session_start();
 
-// Mengimpor file Petshop.php yang berisi definisi kelas Petshop
-require ('Petshop.php');
-
-// Membuat beberapa objek Petshop dengan data awal
-$pet1 = new Petshop("1", "Wishkas", "Makanan", "5000", "foto1.png");
-$pet2 = new Petshop("2", "SikatUcing", "AlatPembersih", "10000", "foto2.png");
-$pet3 = new Petshop("3", "PasirUcing", "AlatPipis", "5000", "foto3.png");
-
-// Menyimpan objek ke dalam array daftar petshop
-$datapetshop = [];
-array_push($datapetshop, $pet1);
-array_push($datapetshop, $pet2);
-array_push($datapetshop, $pet3);
-
-// Menampilkan daftar produk petshop dalam bentuk tabel HTML
-echo "Menampilkan data produk petshop";
-echo "<table border='2'>";
-echo "<tr>";
-echo "<th>ID</th>";
-echo "<th>Nama</th>";
-echo "<th>Kategori</th>";
-echo "<th>Harga</th>";
-echo "<th>Foto Produk</th>";
-echo "</tr>";
-
-// Loop untuk menampilkan setiap item dalam daftar petshop
-foreach ($datapetshop as $item) {
-    echo "<tr>";
-    echo "<td>" . $item->getId() . "</td>";
-    echo "<td>" . $item->getNama() . "</td>";
-    echo "<td>" . $item->getKategori() . "</td>";
-    echo "<td>" . $item->getHarga() . "</td>";
-    echo "<td><img src='" . $item->getUrlFoto() . "' alt='Foto Produk' width='100' height='100'></td>";
-    echo "</tr>";
+// Inisialisasi daftar petshop di session jika belum ada
+if (!isset($_SESSION['datapetshop']) || !is_array($_SESSION['datapetshop'])) {
+    $_SESSION['datapetshop'] = [];
 }
-echo "</table>";
 
-// Menambahkan produk baru ke daftar petshop
-$pet4 = new Petshop("4", "Omeo", "Makanan", "12000", "foto4.png");
+// Pastikan setiap item dalam session benar-benar dalam bentuk objek Petshop
+$datapetshop = array_map(function ($item) {
+    return ($item instanceof Petshop) ? $item : unserialize($item);
+}, $_SESSION['datapetshop']);
 
-// Mengubah nama dan harga dari produk baru sebelum ditambahkan
-$pet4->setNama("Omeoooooo");
-$pet4->setHarga("12999");
+// Tambah produk baru
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['add'])) {
+    $id = count($datapetshop) + 1;
+    $nama = $_POST['nama'];
+    $kategori = $_POST['kategori'];
+    $harga = $_POST['harga'];
+    $urlFoto = $_POST['urlFoto'];
 
-// Memasukkan produk baru yang sudah diubah ke dalam array
-array_push($datapetshop, $pet4);
-
-// Menampilkan daftar produk setelah penambahan dan perubahan data
-echo "Menambah serta mengubah data produk petshop";
-echo "<table border='2'>";
-echo "<tr>";
-echo "<th>ID</th>";
-echo "<th>Nama</th>";
-echo "<th>Kategori</th>";
-echo "<th>Harga</th>";
-echo "<th>Foto Produk</th>";
-echo "</tr>";
-
-// Loop untuk menampilkan data terbaru setelah penambahan produk baru
-foreach ($datapetshop as $item) {
-    echo "<tr>";
-    echo "<td>" . $item->getId() . "</td>";
-    echo "<td>" . $item->getNama() . "</td>";
-    echo "<td>" . $item->getKategori() . "</td>";
-    echo "<td>" . $item->getHarga() . "</td>";
-    echo "<td><img src='" . $item->getUrlFoto() . "' alt='Foto Produk' width='100' height='100'></td>";
-    echo "</tr>";
+    $pet = new Petshop($id, $nama, $kategori, $harga, $urlFoto);
+    $_SESSION['datapetshop'][] = $pet; // Simpan objek langsung tanpa serialize
+    header("Location: ".$_SERVER['PHP_SELF']); // Redirect untuk mencegah re-submit form
+    exit();
 }
-echo "</table>";
 
-// Menghapus produk dengan ID "3" dari daftar petshop
-foreach ($datapetshop as $key => $pet) {
-    if ($pet->getId() == "3") {
-        unset($datapetshop[$key]); // Menghapus elemen array berdasarkan kunci
+// Edit produk
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['edit'])) {
+    $idEdit = $_POST['idEdit'];
+    foreach ($datapetshop as $key => $pet) {
+        if ($pet->getId() == $idEdit) {
+            $pet->setNama($_POST['nama']);
+            $pet->setKategori($_POST['kategori']);
+            $pet->setHarga($_POST['harga']);
+            $pet->setUrlFoto($_POST['urlFoto']);
+            $_SESSION['datapetshop'][$key] = $pet; // Simpan perubahan
+        }
+    }
+    header("Location: ".$_SERVER['PHP_SELF']);
+    exit();
+}
+
+// Hapus produk berdasarkan ID
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete'])) {
+    $idHapus = $_POST['idHapus'];
+    foreach ($datapetshop as $key => $pet) {
+        if ($pet->getId() == $idHapus) {
+            unset($_SESSION['datapetshop'][$key]);
+        }
+    }
+    $_SESSION['datapetshop'] = array_values($_SESSION['datapetshop']); // Reindex array
+    header("Location: ".$_SERVER['PHP_SELF']);
+    exit();
+}
+
+// Cari produk berdasarkan nama
+$cariNama = isset($_POST['cariNama']) ? $_POST['cariNama'] : "";
+$hasilCari = [];
+
+if (!empty($cariNama)) {
+    foreach ($_SESSION['datapetshop'] as $item) {
+        if ($item->getNama() == $cariNama) {
+            $hasilCari[] = $item;
+        }
     }
 }
-
-// Menampilkan daftar produk setelah penghapusan produk dengan ID "3"
-echo "Menghapus data produk petshop";
-echo "<table border='2'>";
-echo "<tr>";
-echo "<th>ID</th>";
-echo "<th>Nama</th>";
-echo "<th>Kategori</th>";
-echo "<th>Harga</th>";
-echo "<th>Foto Produk</th>";
-echo "</tr>";
-
-// Loop untuk menampilkan data terbaru setelah penghapusan
-foreach ($datapetshop as $item) {
-    echo "<tr>";
-    echo "<td>" . $item->getId() . "</td>";
-    echo "<td>" . $item->getNama() . "</td>";
-    echo "<td>" . $item->getKategori() . "</td>";
-    echo "<td>" . $item->getHarga() . "</td>";
-    echo "<td><img src='" . $item->getUrlFoto() . "' alt='Foto Produk' width='100' height='100'></td>";
-    echo "</tr>";
-}
-echo "</table>";
-
-// Mencari produk berdasarkan nama
-echo "Mencari berdasarkan nama <br>";
-$found = false; // Variabel untuk menandai apakah data ditemukan atau tidak
-
-foreach ($datapetshop as $item) {
-    if ($item->getNama() == "Wishkas") {
-        echo $item->getId() . "<br>";
-        echo $item->getNama() . "<br>";
-        echo $item->getKategori() . "<br>";
-        echo $item->getHarga() . "<br>";
-        echo "<img src='" . $item->getUrlFoto() . "' alt='Foto Produk' width='100' height='100'>";
-        $found = true; // Menandai bahwa data telah ditemukan
-        break; // Keluar dari loop setelah menemukan data
-    }
-}
-
-// Jika tidak ditemukan, tampilkan pesan
-if (!$found) {
-    echo "Data tidak ditemukan <br>";
-}
-
 ?>
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Petshop Management</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid black; padding: 10px; text-align: center; }
+        th { background-color: #f4f4f4; }
+    </style>
+</head>
+<body>
+
+    <h2>Tambah Produk Petshop</h2>
+    <form method="POST">
+        Nama: <input type="text" name="nama" required>
+        Kategori: <input type="text" name="kategori" required>
+        Harga: <input type="number" name="harga" required>
+        Foto URL: <input type="text" name="urlFoto" required>
+        <button type="submit" name="add">Tambah</button>
+    </form>
+
+    <h2>Daftar Produk Petshop</h2>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Nama</th>
+            <th>Kategori</th>
+            <th>Harga</th>
+            <th>Foto Produk</th>
+            <th>Aksi</th>
+        </tr>
+        <?php foreach ($datapetshop as $item): ?>
+        <tr>
+            <td><?= $item->getId(); ?></td>
+            <td><?= $item->getNama(); ?></td>
+            <td><?= $item->getKategori(); ?></td>
+            <td><?= $item->getHarga(); ?></td>
+            <td><img src="<?= $item->getUrlFoto(); ?>" width="100"></td>
+            <td>
+                <!-- Tombol Edit -->
+                <button onclick="editForm(<?= $item->getId(); ?>, '<?= $item->getNama(); ?>', '<?= $item->getKategori(); ?>', <?= $item->getHarga(); ?>, '<?= $item->getUrlFoto(); ?>')">
+                    Edit
+                </button>
+
+                <!-- Form Hapus -->
+                <form method="POST" style="display:inline;">
+                    <input type="hidden" name="idHapus" value="<?= $item->getId(); ?>">
+                    <button type="submit" name="delete">Hapus</button>
+                </form>
+            </td>
+        </tr>
+        <?php endforeach; ?>
+    </table>
+
+    <!-- Form Edit Produk -->
+    <h2>Edit Produk Petshop</h2>
+    <form method="POST" id="editForm">
+        <input type="hidden" name="idEdit" id="idEdit">
+        Nama: <input type="text" name="nama" id="editNama" required>
+        Kategori: <input type="text" name="kategori" id="editKategori" required>
+        Harga: <input type="number" name="harga" id="editHarga" required>
+        Foto URL: <input type="text" name="urlFoto" id="editFoto" required>
+        <button type="submit" name="edit">Simpan Perubahan</button>
+    </form>
+
+    <script>
+        function editForm(id, nama, kategori, harga, urlFoto) {
+            document.getElementById('idEdit').value = id;
+            document.getElementById('editNama').value = nama;
+            document.getElementById('editKategori').value = kategori;
+            document.getElementById('editHarga').value = harga;
+            document.getElementById('editFoto').value = urlFoto;
+        }
+    </script>
+
+<h2>Cari Produk</h2>
+    <form method="POST">
+        Nama: <input type="text" name="cariNama">
+        <button type="submit">Cari</button>
+    </form>
+
+    <?php if (!empty($cariNama)): ?>
+        <h3>Hasil Pencarian:</h3>
+        <?php if (count($hasilCari) > 0): ?>
+            <table>
+                <tr>
+                    <th>ID</th>
+                    <th>Nama</th>
+                    <th>Kategori</th>
+                    <th>Harga</th>
+                    <th>Foto Produk</th>
+                </tr>
+                <?php foreach ($hasilCari as $item): ?>
+                <tr>
+                    <td><?= $item->getId(); ?></td>
+                    <td><?= $item->getNama(); ?></td>
+                    <td><?= $item->getKategori(); ?></td>
+                    <td><?= $item->getHarga(); ?></td>
+                    <td><img src="<?= $item->getUrlFoto(); ?>" width="100"></td>
+                </tr>
+                <?php endforeach; ?>
+            </table>
+        <?php else: ?>
+            <p>Produk tidak ditemukan.</p>
+        <?php endif; ?>
+    <?php endif; ?>
+
+</body>
+</html>
